@@ -1,0 +1,28 @@
+move_base_flex:
+  global_frame: odom          # 맵이 아닌 odom 기준으로 (맵 있으면 map)
+  robot_base_frame: base_footprint # base_footprint 대신 base_link 사용 권장
+  # 또는 base_footprint로 할 경우 위 TF가 정상이어야 함
+
+  planner_frequency: 1.0
+  controller_frequency: 10.0
+
+  shutdown_costmaps: false
+  planner_patience: 5.0
+  controller_patience: 15.0
+  conservative_reset_dist: 3.0
+
+  oscillation_timeout: 10.0
+  oscillation_distance: 0.2
+
+
+planners:
+  - name: NavfnPlanner
+    type: navfn/NavfnROS
+
+controllers:
+  - name: DWAPlanner
+    type: dwa_local_planner/DWAPlannerROS
+
+recovery_behaviors:
+  - name: 'moveback_recovery'
+    type: 'moveback_recovery/MoveBackRecovery'

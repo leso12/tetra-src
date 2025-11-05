@@ -1,0 +1,2 @@
+base_global_planner: navfnROS       # <-- planners[].name 과 동일 (소문자 n)
+base_local_planner:  mppi_controller_ros/MPPIControllerROS   # <-- controllers[].name 과 동일

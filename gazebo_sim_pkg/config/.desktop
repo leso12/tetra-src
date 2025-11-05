@@ -1,0 +1,6 @@
+[Desktop Entry]
+Encoding=UTF-8
+Name=Link to 
+Type=Link
+URL=file:///home/ani/scout_ws/src/Scout_mini_ROS1_Navigation/scout_bringup/scout_navigation/param/base_local_planner_params.yaml
+Icon=application-x-yaml

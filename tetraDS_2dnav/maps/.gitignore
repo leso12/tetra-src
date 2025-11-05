@@ -1,0 +1,4 @@
+*.pgm
+*.yaml
+!office.pgm
+!office.yaml

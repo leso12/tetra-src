@@ -1,0 +1,4 @@
+<launch>
+    <arg name="rviz_config" default="$(find gazebo_sim_pkg)/rviz/rviz.rviz" />
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(arg rviz_config)" output="screen" />
+</launch>

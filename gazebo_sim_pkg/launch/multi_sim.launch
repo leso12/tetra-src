@@ -1,0 +1,43 @@
+<launch>
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find gazebo_sim_pkg)/worlds/my_robot_with_camera.world"/>
+    <env name="GAZEBO_MODEL_PATH" value="$(find gazebo_sim_pkg)/worlds:$(optenv GAZEBO_MODEL_PATH)"/>
+    <arg name="paused" value="false"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="gui" value="false"/>
+    <arg name="headless" value="false"/>
+    <arg name="debug" value="false"/>
+  </include>
+
+  <arg name="map_name" default="test_map"/> 
+  <arg name="map_file" default="$(find gazebo_sim_pkg)/maps/$(arg map_name).yaml"/>
+  <node name="map_server" pkg="map_server" type="map_server" args="$(arg map_file)" />
+
+  <include file="$(find gazebo_sim_pkg)/launch/multi_spawn.launch">
+    <arg name="robot_name" value="robot1"/>
+    <arg name="x_pos" value="0.0"/>
+    <arg name="y_pos" value="4.0"/>
+    <arg name="z_pos" value="0.07"/>
+    <arg name="yaw_pos" value="0.0"/>
+  </include>
+
+  <include file="$(find gazebo_sim_pkg)/launch/multi_spawn.launch">
+    <arg name="robot_name" value="robot2"/>
+    <arg name="x_pos" value="-6.0"/>
+    <arg name="y_pos" value="-2.0"/>
+    <arg name="z_pos" value="0.07"/>
+    <arg name="yaw_pos" value="3.14159"/>
+  </include>
+
+  <include file="$(find gazebo_sim_pkg)/launch/multi_spawn.launch">
+    <arg name="robot_name" value="robot3"/>
+    <arg name="x_pos" value="6.0"/>
+    <arg name="y_pos" value="-2.0"/>
+    <arg name="z_pos" value="0.07"/>
+    <arg name="yaw_pos" value="0.0"/>
+  </include>
+
+  <arg name="rviz_config" default="$(find gazebo_sim_pkg)/rviz/multi_display.rviz" />
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(arg rviz_config)" output="screen" />
+
+</launch>

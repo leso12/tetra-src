@@ -1,0 +1,45 @@
+<launch>
+  <arg name="robot_name" default="my_robot"/>
+  <arg name="x_pos" default="0.0"/>
+  <arg name="y_pos" default="0.0"/>
+  <arg name="z_pos" default="0.0"/>
+  <arg name="yaw_pos" default="0.0"/>
+
+  <arg name="initial_pose_x" default="$(arg x_pos)"/> 
+  <arg name="initial_pose_y" default="$(arg y_pos)"/> 
+  <arg name="initial_pose_z" default="$(arg z_pos)"/> 
+  <arg name="initial_pose_a" default="$(arg yaw_pos)"/>
+
+  <group ns="$(arg robot_name)">
+    <param name="robot_description"
+    command="$(find xacro)/xacro --inorder '$(find gazebo_sim_pkg)/urdf/multi_robot.urdf.xacro'
+    robot_name:=$(arg robot_name) tf_prefix:=$(arg robot_name)"/>
+
+    <node name="spawn_robot" pkg="gazebo_ros" type="spawn_model"
+    args="-urdf -param robot_description -model $(arg robot_name) -x $(arg x_pos) -y $(arg y_pos) -z $(arg z_pos) -Y $(arg yaw_pos)"
+    output="screen"/>
+
+    <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
+      <param name="use_gui" value="false"/>
+    </node>
+
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher">
+      <param name="publish_frequency" value="30.0"/>
+      <param name="tf_prefix" value="$(arg robot_name)"/>
+    </node>
+
+    <rosparam file="$(find gazebo_sim_pkg)/config/multi_robot_control.yaml" command="load"/>
+    <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false"
+    output="screen" args="joint_state_controller"/> 
+
+  <include file="$(find gazebo_sim_pkg)/launch/amcl.launch">
+      <arg name="robot_name" value="$(arg robot_name)"/>
+      <arg name="initial_pose_x" value="$(arg initial_pose_x)"/>
+      <arg name="initial_pose_y" value="$(arg initial_pose_y)"/>
+      <arg name="initial_pose_z" value="$(arg initial_pose_z)"/>
+      <arg name="initial_pose_a" value="$(arg initial_pose_a)"/>
+  </include>
+
+  </group>
+
+</launch>

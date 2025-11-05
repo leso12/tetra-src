@@ -1,0 +1,16 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "",
+        "limitSymbolsToIncludedHeaders": true
+      },
+      "includePath": [
+        "/opt/ros/kineticm/include",
+        "/home/ani/tetra/catkin_ws/src/tetra_ds4/include",
+        "/usr/include"
+      ],
+      "name": "Linux"
+    }
+  ]
+}

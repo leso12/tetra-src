@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+
+<robot name="tetraDS" xmlns:xacro="http://ros.org/wiki/xacro">
+
+  <!-- Define a number of dimensions using properties -->
+  <xacro:property name="base_length" value="0.473" />
+  <xacro:property name="base_radius" value="0.2365" />
+  <xacro:property name="wheel_offset_z" value="-0.100" />
+  <xacro:property name="PI" value="3.1415926" />
+
+  <!-- The base xacro macro -->
+  <xacro:macro name="base" params="name color">
+   <link name="${name}_link">
+    <visual>
+    <origin xyz=" 0 0 0 " rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://tetraDS_description/meshes/tetra-dsv-ani-platfrom_stl.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="Grey"/>        
+    </visual>
+      <collision>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <geometry>
+                <cylinder length="${base_length}" radius="${base_radius}"/>
+            </geometry>
+      </collision>
+    </link>
+  </xacro:macro>
+  
+  <link name="base_footprint">
+      <visual>
+        <origin xyz="-0.097275 0 0" rpy="0 0 0" /> 
+        <geometry>
+	        <box size="0.69895 0.600 0.001" />
+        </geometry>
+        <material name="TransparentGreen" />
+      </visual>
+  </link>
+
+  <joint name="base_joint" type="fixed"> <!--fixed-->   
+    <origin xyz="0 0 ${-wheel_offset_z}" rpy="0 0 0" />
+    <parent link="base_footprint"/>
+    <child link="base_link" />
+  </joint>
+
+
+</robot>

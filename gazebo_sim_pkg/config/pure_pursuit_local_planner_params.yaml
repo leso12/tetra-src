@@ -1,0 +1,21 @@
+# 속도 한계
+max_linear_x:  0.35
+min_linear_x:  0.0
+max_angular_z: 1.2
+min_angular_z: 0.0
+
+# 추종/룩어헤드
+lookahead_distance: 0.8
+lookahead_gain:     1.0
+
+# 목표 허용오차
+goal_tolerance_xy:  0.20
+goal_tolerance_yaw: 0.25
+
+# 회전 전략
+rotate_in_place_enable: true
+rotate_to_path_angle:   0.5
+
+# 가속 제한
+acc_limit_lin: 0.6
+acc_limit_ang: 1.5

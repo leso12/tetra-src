@@ -1,0 +1,34 @@
+global_costmap:
+  global_frame: map
+  robot_base_frame: base_footprint
+  update_frequency: 15.0
+  publish_frequency: 5.0
+  rolling_window: false
+  track_unknown_space: true
+  unknown_cost_value: 255
+
+  plugins:
+    - {name: static_layer,    type: "costmap_2d::StaticLayer"}
+    - {name: obstacle_layer,  type: "costmap_2d::ObstacleLayer"}
+    - {name: inflation_layer, type: "costmap_2d::InflationLayer"}
+    
+  # 필요시 글로벌에서만 살짝 완화/강화
+  obstacle_layer:
+    observation_sources: scan     # 이름 일치!
+    scan:
+      data_type: LaserScan
+      topic: /scan
+      marking: true
+      clearing: true
+      observation_persistence: 0.5
+      obstacle_range: 6.0
+      raytrace_range: 7.0
+      max_obstacle_height: 2.5
+
+  inflation_layer:
+    inflation_radius: 0.35
+    cost_scaling_factor: 3.0
+
+  static_layer:
+    map_topic: /map
+    track_unknown_space: true

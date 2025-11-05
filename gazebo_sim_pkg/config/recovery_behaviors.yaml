@@ -1,0 +1,5 @@
+
+# ───────── 리커버리(예: move_back) ─────────
+recovery_behaviors:
+  - name: moveback_recovery
+    type: moveback_recovery/MoveBackRecovery

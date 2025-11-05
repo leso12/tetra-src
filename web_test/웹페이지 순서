@@ -1,0 +1,9 @@
+1. roslaunch gazebo_sim_pkg my_sim.launch
+
+2. rosrun web_video_server web_video_server _port:=8080
+
+3. roslaunch rosbridge_server rosbridge_websocket.launch
+
+4. python3 -m http.server 8000 (html 파일 있는 폴더에서)
+
+5. 61.250.168.131:8000 (인터넷 창에 입력)

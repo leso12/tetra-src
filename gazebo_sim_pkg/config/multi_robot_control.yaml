@@ -1,0 +1,33 @@
+my_robot:
+  # Joint states publisher (ros_control)
+  joint_state_controller:
+    type: joint_state_controller/JointStateController
+    publish_rate: 50
+
+  # Diff drive controller (속도 제어)
+  diff_drive_controller:
+    type: diff_drive_controller/DiffDriveController
+    left_wheel:  left_wheel_joint
+    right_wheel: right_wheel_joint
+    publish_rate: 50
+    cmd_vel_timeout: 0.4
+
+    base_frame_id: base_footprint
+    enable_odom_tf: true
+
+    wheel_separation: 0.30    # URDF와 일치
+    wheel_radius:     0.05    # (지름 0.1/2)
+
+    linear:
+      x:
+        has_velocity_limits: true
+        max_velocity: 0.30
+        has_acceleration_limits: true
+        max_acceleration: 0.60
+
+    angular:
+      z:
+        has_velocity_limits: true
+        max_velocity: 1.80
+        has_acceleration_limits: true
+        max_acceleration: 2.00

@@ -1,0 +1,34 @@
+# ───────── MBF ─────────
+global_frame: map
+robot_base_frame: base_footprint
+
+controller_frequency: 10.0
+planner_frequency:    1.0
+recovery_behaviors_enabled: true
+oscillation_timeout:  10.0
+oscillation_distance: 0.2
+
+# ───────── 글로벌 플래너 목록 ─────────
+planners:
+  - name: navfnROS               # ← 이 "이름"으로 선택됨 (default_planner.yaml과 일치)
+    type: navfn/NavfnROS         # ← 플러그인 타입
+
+# (선택) 기본 플래너 지정
+planner: navfnROS
+
+# ───────── 로컬 컨트롤러 목록 ─────────
+controllers:
+  - name: pure_pursuit_local_planner/PurePursuitPlanner           # ← 이 "이름"으로 선택됨 (default_planner.yaml과 일치)
+    type: pure_pursuit_local_planner/PurePursuitPlanner
+
+# (선택) 기본 컨트롤러 지정
+controller: pure_pursuit_local_planner/PurePursuitPlanner
+
+# ───────── 리커버리(예: move_back) ─────────
+recovery_behaviors:
+  - name: moveback_recovery
+    type: moveback_recovery/MoveBackRecovery
+
+# 목표 허용오차
+dist_tolerance: 0.3
+yaw_tolerance:  0.35

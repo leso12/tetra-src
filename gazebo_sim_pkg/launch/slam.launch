@@ -1,0 +1,56 @@
+<launch>
+  <!-- slam을 마친 후에, roslaunch gazebo_sim_pkg slam_map_save.launch를 실행하면 맵이 저장됨. -->
+  <!-- 맵을 특정 이름으로 저장하고 싶을 때는 roslaunch gazebo_sim_pkg slam_map_save.launch map_file:=원하는 맵 이름(yaml 없이 이름만 입력) 
+      기본적으로는 map1로 저장됨. 그러므로 원하는 맵 이름을 입력하던가,
+      launch 파일 내에 <arg name="map_file" default="map1" /> 여기서 "" 안에 이름 바꾸면 그 이름으로 저장됨. -->
+  <!-- Use simulation time -->
+  <param name="use_sim_time" value="true" />
+
+
+  <!-- Run gmapping SLAM -->
+  <node name="slam_gmapping" pkg="gmapping" type="slam_gmapping">
+    <param name="base_frame" value="base_footprint"/>
+    <param name="odom_frame" value="odom"/>
+    <param name="map_frame" value="map"/>
+    <param name="scan_topic" value="scan" />
+    <param name="map_update_interval" value="0.5"/>
+    <param name="maxUrange" value="10.0"/>
+    <param name="maxRange" value="10.0"/>
+    <param name="minimumScore" value="50"/>
+
+    <param name="xmin" value="-1.0"/>
+    <param name="ymin" value="-1.0"/>
+    <param name="xmax" value="1.0"/>
+    <param name="ymax" value="1.0"/>
+
+    <param name="sigma" value="0.05"/>
+    <param name="kernelSize" value="3"/>
+    <param name="lstep" value="0.05"/>
+    <param name="astep" value="0.05"/>
+    <param name="iterations" value="5"/>
+    <param name="lsigma" value="0.075"/>
+    <param name="ogain" value="3.0"/>
+    <param name="lskip" value="0"/>
+    <param name="srr" value="0.01"/>
+    <param name="srt" value="0.02"/>
+    <param name="str" value="0.01"/>
+    <param name="stt" value="0.02"/>
+    <param name="linearUpdate" value="0.05"/>
+    <param name="angularUpdate" value="0.0436"/>
+    <param name="temporalUpdate" value="-1.0"/>
+    <param name="resampleThreshold" value="0.5"/>
+    <param name="particles" value="50"/>
+
+    <param name="delta" value="0.1"/>
+    <param name="llsamplerange" value="0.01"/>
+    <param name="llsamplestep" value="0.01"/>
+    <param name="lasamplerange" value="0.005"/>
+    <param name="lasamplestep" value="0.005"/>
+
+     <remap from="scan" to="scan"/>
+  </node>
+
+  <!-- RViz for visualization -->
+  <include file="$(find gazebo_sim_pkg)/launch/rviz_display.launch" />
+  
+</launch>

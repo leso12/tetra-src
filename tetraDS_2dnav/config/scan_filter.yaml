@@ -1,0 +1,27 @@
+scan_filter_chain:
+- name: range
+  type: laser_filters/LaserScanRangeFilter
+  params:
+    use_message_range_limits: false
+    lower_threshold: 0.3
+    upper_threshold: 25.0
+    lower_replacement_value: -.inf
+    upper_replacement_value: .inf
+- name: box
+  type: laser_filters/LaserScanBoxFilter
+  params:
+    box_frame: TETRA_NS/base_footprint
+    min_x: -0.446
+    max_x: 0.252
+    min_y: -0.300
+    max_y: 0.300
+    min_z: -1.000
+    max_z: 1.000
+    invert: false
+- name: speckle_filter
+  type: laser_filters/LaserScanSpeckleFilter
+  params:
+    filter_type: 0
+    max_range: 2.0
+    max_range_difference: 0.1
+    filter_window: 2

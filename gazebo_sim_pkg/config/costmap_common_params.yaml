@@ -1,0 +1,28 @@
+# 범위/지연
+obstacle_range: 8.0
+raytrace_range: 9.0
+max_obstacle_height: 3.5
+transform_tolerance: 0.5
+
+
+# 로봇 외형
+footprint: [[-0.33, -0.32], [-0.33, 0.32], [0.33, 0.32], [0.33, -0.32]]
+footprint_padding: 0.05
+
+map_type: costmap
+
+# ── 공통 레이어 기본값
+obstacle_layer:
+  observation_sources: scan         # scan으로 통일
+  scan:
+    data_type: LaserScan
+    topic: /scan
+    marking: true
+    clearing: true
+    expected_update_rate: 0.07
+    observation_persistence: 0.5
+    # sensor_frame: laser_link
+
+inflation_layer:
+  inflation_radius: 0.35
+  cost_scaling_factor: 2.5

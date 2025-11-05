@@ -1,0 +1,2 @@
+base_global_planner: global_planner/RRTGlobalPlanner       # <-- planners[].name 과 동일 (소문자 n)
+base_local_planner:  regulated_pure_pursuit_controller/RegulatedPurePursuitController   # <-- controllers[].name 과 동일

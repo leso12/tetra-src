@@ -1,0 +1,25 @@
+# move_base 파라미터 전반
+shutdown_costmaps: false
+controller_frequency: 10.0
+planner_frequency: 5.0
+controller_patience: 15.0
+planner_patience: 5.0
+mbf_tolerance_check: true
+
+oscillation_timeout: 10.0
+oscillation_distance: 0.2
+
+# global/local planner 지정
+base_global_planner: "navfn/NavfnROS"
+
+base_local_planner: "pure_pursuit_local_planner/PurePursuitPlanner"
+
+# 복구 행동 (Recovery behaviors) 예시
+recovery_behaviors:
+  - name: "clear_costmap_recovery"
+    type: "clear_costmap_recovery/ClearCostmapRecovery"
+  - name: "rotate_recovery"
+    type: "rotate_recovery/RotateRecovery"
+
+# tf 관련 여유 허용 시간
+transform_tolerance: 1.5

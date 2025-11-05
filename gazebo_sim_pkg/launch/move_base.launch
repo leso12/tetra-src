@@ -1,0 +1,28 @@
+<launch>
+  <!-- Arguments -->
+  <arg name="cmd_vel_topic" default="cmd_vel" />
+  <arg name="odom_topic" default="odom" />
+  <arg name="move_forward_only" default="false"/>
+
+
+  <!-- move_base -->
+  <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
+   <!-- <param name="base_local_planner" value="dwa_local_planner/DWAPlannerROS" /> -->
+   <!-- global/local planner 변경 시, 아래와 같이 수정-->
+   <!-- navfn, dwa는 Move_Base 패키지에 기본적으로 작동하기 때문에 지정된 이름이 "dwa_local_planner/DWAPlannerROS", "NavfnROS"임.
+    그 외에 다른 플래너들을 플러그인할 때는 아래처럼 패키지 플러그인에 적인 이름을 형식 그대로 가져오면 됨 -->
+    <param name="base_local_planner" value="pure_pursuit_local_planner/PurePursuitPlanner" /> 
+    <rosparam file="$(find gazebo_sim_pkg)/config/costmap_common_params.yaml" command="load" ns="global_costmap" />
+    <rosparam file="$(find gazebo_sim_pkg)/config/costmap_common_params.yaml" command="load" ns="local_costmap" />
+    <rosparam file="$(find gazebo_sim_pkg)/config/local_costmap_params.yaml" command="load" />
+    <rosparam file="$(find gazebo_sim_pkg)/config/global_costmap_params.yaml" command="load" />
+    <rosparam file="$(find gazebo_sim_pkg)/config/move_base_params.yaml" command="load" />
+    <rosparam file="$(find gazebo_sim_pkg)/config/pure_pursuit_local_planner_params.yaml" command="load" />
+    <!--<rosparam file="$(find gazebo_sim_pkg)/config/dwa_local_planner_params.yaml" command="load" />-->
+    <!--<rosparam file="$(find gazebo_sim_pkg)/config/base_local_planner_params.yaml" command="load" />-->
+    <rosparam file="$(find gazebo_sim_pkg)/config/navfn_global_planner_params.yaml" command="load" /> 
+    <remap from="cmd_vel" to="$(arg cmd_vel_topic)"/>
+    <remap from="odom" to="$(arg odom_topic)"/>
+    <!-- <param name="DWAPlannerROS/min_vel_x" value="0.0" if="$(arg move_forward_only)" /> -->
+  </node>
+</launch>

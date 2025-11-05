@@ -1,0 +1,43 @@
+<launch>
+  <arg name="cmd_vel_topic" default="/cmd_vel"/>
+  <arg name="odom_topic"    default="odom"/>
+
+  <!-- MBF 노드 -->
+  <node pkg="mbf_costmap_nav" type="mbf_costmap_nav" name="move_base_flex" output="screen">
+    <!-- costmap 공통/개별 파라미터 -->
+    <rosparam file="$(find gazebo_sim_pkg)/config/costmap_common_params.yaml" command="load" ns="global_costmap"/>
+    <rosparam file="$(find gazebo_sim_pkg)/config/costmap_common_params.yaml" command="load" ns="local_costmap"/>
+    <rosparam file="$(find gazebo_sim_pkg)/config/global_costmap_params.yaml" command="load"/>
+    <rosparam file="$(find gazebo_sim_pkg)/config/local_costmap_params.yaml"  command="load"/>
+
+    <!-- MBF 루트 설정(플래너/컨트롤러 목록 포함) : 1회만 로드! -->
+    <rosparam file="$(find gazebo_sim_pkg)/config/move_base_flex_params_mppi.yaml" command="load"/>
+
+    <!-- Navfn 플래너 개별 파라미터 : '플래너 이름'과 동일한 NS 사용 -->
+    <rosparam file="$(find gazebo_sim_pkg)/config/navfn_global_planner_params_mbf.yaml"
+              command="load" ns="navfnROS"/>
+
+    <!-- Pure Pursuit 컨트롤러 개별 파라미터 : '컨트롤러 이름'과 동일한 NS 사용 -->
+    <rosparam file="$(find gazebo_sim_pkg)/config/mppi_controller_params.yaml"
+              command="load" ns="mppi_controller_ros/MPPIControllerROS"/>
+
+    <rosparam file="$(find gazebo_sim_pkg)/config/recovery_behaviors.yaml" command="load" />
+    
+    <!-- 필요 시 입출력 리맵 (보통은 기본값으로 충분) -->
+    <!--
+    <remap from="cmd_vel" to="$(arg cmd_vel_topic)"/>
+    <remap from="odom"    to="$(arg odom_topic)"/>
+    -->
+  </node>
+
+  <!-- 구형 move_base 호환(2D Nav Goal를 MBF로 자동 라우팅) -->
+  <node name="move_base_legacy_relay" pkg="mbf_costmap_nav" type="move_base_legacy_relay.py" output="screen">
+    <rosparam file="$(find gazebo_sim_pkg)/config/default_planner_mppi.yaml" command="load"/>
+  </node>
+
+  <!-- RViz 2D Nav Goal → MBF simple_goal 로 릴레이 (안전하게 명시) -->
+  <node pkg="topic_tools" type="relay" name="relay_nav_goal"
+        args="/move_base_simple/goal /move_base_flex/move_base_simple/goal" output="screen"/>
+  <node pkg="topic_tools" type="relay" name="relay_nav_cancel"
+        args="/move_base_simple/cancel /move_base_flex/move_base_simple/cancel" output="screen"/>
+</launch>

@@ -1,0 +1,113 @@
+<?xml version="1.0"?>
+
+<robot name="tetraDS" xmlns:xacro="http://ros.org/wiki/xacro">
+
+  <!-- Define a number of dimensions using properties -->
+  <xacro:property name="PI" value="3.1415926" />
+
+
+   <!-- Include all component files -->
+   <xacro:include filename="$(find tetraDS_description)/urdf/tetraDS/materials.urdf.xacro" />
+   <xacro:include filename="$(find tetraDS_description)/urdf/tetraDS/base.urdf.xacro" />
+   
+   <!-- Add the base and wheels -->
+   <base name="base" color="Black"/>
+  
+  <link name="laser">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <box size="0.01 0.01 0.01" />
+        </geometry>
+        <material name="Red" />
+      </visual>
+  </link>
+
+  <joint name="laser_flag" type="fixed">
+    <origin xyz="0.120 0 0.131" rpy="0 0 -${PI/2}" />
+    <parent link="base_link"/>
+    <child link="laser" />
+  </joint>
+
+  <link name="laser_link2">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <box size="0.01 0.01 0.01" />
+        </geometry>
+        <material name="Red" />
+      </visual>
+  </link>
+
+  <joint name="base_link_to_laser_link2" type="fixed">
+    <origin xyz="-0.446 0.0 0.160" rpy="0 0 ${PI}" />
+    <parent link="base_link"/>
+    <child link="laser_link2" />
+  </joint>
+
+  <link name="imu_link">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <box size="0.01 0.01 0.01" />
+        </geometry>
+        <material name="Red" />
+      </visual>
+  </link>
+
+  <joint name="base_link_to_imu_link" type="fixed">
+    <origin xyz="0.0 0 0.124" rpy="0 0 0" />
+    <parent link="base_link"/>
+    <child link="imu_link" />
+  </joint>
+
+ <link name="usb_cam">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <box size="0.01 0.01 0.01" />
+        </geometry>
+        <material name="Red" />
+      </visual>
+  </link>
+
+  <joint name="usb_cam" type="fixed">
+    <origin xyz="0.248 0.0 0.108" rpy="1.5708 3.14159 1.5708"/>
+    <parent link="base_link"/>
+    <child link="usb_cam" />
+  </joint>  
+
+
+ <link name="Front_bumper">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <box size="0.01 0.60 0.01" />
+        </geometry>
+        <material name="TransparentBlack" />
+      </visual>
+  </link>
+
+  <joint name="Front_bumper" type="fixed">
+    <origin xyz="0.252 0.0 -0.05" rpy="0 0 0" />
+    <parent link="base_link"/>
+    <child link="Front_bumper" />
+  </joint>
+
+   <link name="camera1_link">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <box size="0.01 0.01 0.01" />
+        </geometry>
+        <material name="Red" />
+      </visual>
+  </link>
+
+  <joint name="camera1_link" type="fixed">
+    <origin xyz="0.252 0.0 0.083" rpy="0 0 0" />
+    <parent link="base_link"/>
+    <child link="camera1_link" />
+  </joint>
+
+</robot>

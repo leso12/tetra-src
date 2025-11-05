@@ -1,0 +1,21 @@
+# pure_pursuit_params.yaml  (네임스페이스는 런치에서 붙일 것!)
+max_linear_x: 0.35        # m/s
+min_linear_x: 0.0
+max_angular_z: 1.2        # rad/s
+min_angular_z: 0.0
+
+lookahead_distance: 0.8   # m (전방 주시 거리)
+lookahead_gain: 1.0       # 선택: 커브 민감도 보정
+
+goal_tolerance_xy: 0.20   # m
+goal_tolerance_yaw: 0.25  # rad
+
+rotate_in_place_enable: true     # 제자리 회전 사용
+rotate_to_path_angle: 0.5        # 경로와 각도 차 크면 회전부터
+
+# 필요시 안전 상한
+acc_limit_lin: 0.6         # m/s^2
+acc_limit_ang: 1.5         # rad/s^2
+controllers:
+  - name: pure_pursuit
+    type: pure_pursuit_local_planner/PurePursuitPlanner
