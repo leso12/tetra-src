@@ -1,0 +1,100 @@
+#include <pure_pursuit_local_planner/join_costmap.h>
+#include <ros/ros.h>
+#include <geometry_msgs/PointStamped.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <algorithm>
+#include <cmath>
+
+namespace pure_pursuit_local_planner
+{
+
+JoinCostmap::JoinCostmap()
+: global_costmap_ros_(nullptr),
+  local_costmap_ros_(nullptr),
+  tf2_buffer_(nullptr),
+  initialized_(false)
+{}
+
+void JoinCostmap::initialize(costmap_2d::Costmap2DROS* local_costmap_ros,
+                             costmap_2d::Costmap2DROS* global_costmap_ros,
+                             tf2_ros::Buffer* tf2_buffer)
+{
+  local_costmap_ros_  = local_costmap_ros;
+  global_costmap_ros_ = global_costmap_ros;
+  tf2_buffer_         = tf2_buffer;
+
+  if (!local_costmap_ros_ || !global_costmap_ros_ || !tf2_buffer_) {
+    ROS_ERROR("JoinCostmap: null inputs");
+    initialized_ = false;
+    return;
+  }
+
+  const double r_local  = local_costmap_ros_->getCostmap()->getResolution();
+  const double r_global = global_costmap_ros_->getCostmap()->getResolution();
+  if (std::fabs(r_local - r_global) > 1e-6) {
+    ROS_ERROR("JoinCostmap: resolutions must match (local=%.3f, global=%.3f)", r_local, r_global);
+    initialized_ = false;
+    return;
+  }
+
+  const unsigned int gx = global_costmap_ros_->getCostmap()->getSizeInCellsX();
+  const unsigned int gy = global_costmap_ros_->getCostmap()->getSizeInCellsY();
+  global_cache_.assign(gx, std::vector<unsigned char>(gy, 0));
+
+  for (unsigned int i = 0; i < gx; ++i)
+    for (unsigned int j = 0; j < gy; ++j)
+      global_cache_[i][j] = global_costmap_ros_->getCostmap()->getCost(i, j);
+
+  initialized_ = true;
+  ROS_INFO("JoinCostmap: Initialized (res=%.3f, size=%ux%u)", r_global, gx, gy);
+}
+
+void JoinCostmap::joinMaps()
+{
+  if (!initialized_) {
+    ROS_WARN_THROTTLE(2.0, "JoinCostmap: not initialized");
+    return;
+  }
+
+  auto* gmap = global_costmap_ros_->getCostmap();
+  auto* lmap = local_costmap_ros_->getCostmap();
+
+  const unsigned int gx = gmap->getSizeInCellsX();
+  const unsigned int gy = gmap->getSizeInCellsY();
+
+  const std::string global_frame = global_costmap_ros_->getGlobalFrameID();
+  const std::string local_frame  = local_costmap_ros_->getGlobalFrameID();
+
+  geometry_msgs::PointStamped g_pt, l_pt;
+  g_pt.header.frame_id = global_frame;
+
+  for (unsigned int i = 0; i < gx; ++i) {
+    for (unsigned int j = 0; j < gy; ++j) {
+      double wx, wy;
+      gmap->mapToWorld(i, j, wx, wy);
+
+      g_pt.header.stamp = ros::Time(0);
+      g_pt.point.x = wx; g_pt.point.y = wy; g_pt.point.z = 0.0;
+
+      try {
+        tf2_buffer_->transform(g_pt, l_pt, local_frame, ros::Duration(0.05));
+      } catch (const tf2::TransformException& ex) {
+        ROS_WARN_THROTTLE(1.0, "JoinCostmap TF2: %s", ex.what());
+        continue;
+      }
+
+      unsigned int mx, my;
+      if (!lmap->worldToMap(l_pt.point.x, l_pt.point.y, mx, my)) {
+        continue;
+      }
+
+      const unsigned char local_cost  = lmap->getCost(mx, my);
+      const unsigned char global_cost = global_cache_[i][j];
+      const unsigned char merged      = std::max(local_cost, global_cost);
+
+      gmap->setCost(i, j, merged);
+    }
+  }
+}
+
+} // namespace pure_pursuit_local_planner

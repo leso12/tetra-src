@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<launch>
+   
+
+  <!-- By default, do not start RViz from this launch file -->
+  <arg name="use_rviz" default="false" />
+  <!-- Launch Rviz configured for navigation -->
+  <arg name="rvizconfig" default="$(find navi_goals)/rviz/navigation.rviz"/> <!-- Set config file --> 
+  <arg name="task_name" default="test"/>
+  <arg name="move_base_wait_duration" default="6000.0"/>
+
+  <arg name="nav_goals_file" default="$(find navi_goals)/config/waypoints.yaml"/> <!-- Set config file --> 
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" if="$(arg use_rviz)" />
+  
+  <node pkg="navi_goals" type="navi_goals" name="navi_goals_node" args="" output="screen" >
+    <param name="waypoints_cfg_file_name" type="string" value="$(arg nav_goals_file)" />
+    <param name="move_base_wait_duration" type="double" value="$(arg move_base_wait_duration)" />
+  </node>
+</launch>

@@ -1,0 +1,351 @@
+#include <pure_pursuit_local_planner/pure_pursuit_planner.h>
+#include <pure_pursuit_local_planner/transform_global_plan.h>
+
+#include <pluginlib/class_list_macros.h>
+#include <angles/angles.h>
+#include <tf2/utils.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <ros/ros.h>
+#include <cmath>
+#include <algorithm>
+
+PLUGINLIB_EXPORT_CLASS(pure_pursuit_local_planner::PurePursuitPlanner, nav_core::BaseLocalPlanner)
+
+// === LoS collision check ===
+static bool collisionAlongLine(costmap_2d::Costmap2D* cm,
+                               double x0, double y0, double x1, double y1,
+                               double step = 0.02)
+{
+  const double dx = x1 - x0, dy = y1 - y0;
+  const double len = std::hypot(dx, dy);
+  const int n = std::max(1, (int)std::floor(len / step));
+  for (int i = 0; i <= n; ++i) {
+    const double t  = (double)i / (double)n;
+    const double wx = x0 + t * dx;
+    const double wy = y0 + t * dy;
+    unsigned int mx, my;
+    if (!cm->worldToMap(wx, wy, mx, my)) continue;
+    const unsigned char c = cm->getCost(mx, my);
+    if (c >= costmap_2d::LETHAL_OBSTACLE) return true;
+  }
+  return false;
+}
+
+// === Forward obstacle distance probe ===
+static double forwardObstacleDistance(costmap_2d::Costmap2DROS* costmap_ros,
+                                      double arc_length_m = 0.60, double half_width_m = 0.35)
+{
+  auto* cm = costmap_ros->getCostmap();
+  geometry_msgs::PoseStamped rb;
+  if (!costmap_ros->getRobotPose(rb)) return std::numeric_limits<double>::infinity();
+
+  const double res = cm->getResolution();
+  const int nx = (int)std::ceil(arc_length_m/res);
+  const int ny = (int)std::ceil(half_width_m/res);
+  const double yaw = tf2::getYaw(rb.pose.orientation);
+
+  double min_d = std::numeric_limits<double>::infinity();
+  for (int ix=0; ix<=nx; ++ix){
+    for (int iy=-ny; iy<=ny; ++iy){
+      const double lx = ix*res, ly = iy*res;
+      const double wx = rb.pose.position.x +  lx*std::cos(yaw) - ly*std::sin(yaw);
+      const double wy = rb.pose.position.y +  lx*std::sin(yaw) + ly*std::cos(yaw);
+      unsigned int mx,my;
+      if (!cm->worldToMap(wx,wy,mx,my)) continue;
+      const unsigned char c = cm->getCost(mx,my);
+      if (c >= costmap_2d::LETHAL_OBSTACLE) {
+        const double d = std::hypot(lx, ly);
+        if (d < min_d) min_d = d;
+      }
+    }
+  }
+  return min_d;
+}
+
+// === Path heading (tangent) helper ===
+static bool pathHeadingAt(const std::vector<geometry_msgs::PoseStamped>& plan,
+                          int idx, double& yaw_path)
+{
+  if (plan.empty()) return false;
+  const int i1 = std::max(1, std::min(idx, (int)plan.size()-1));
+  const int i0 = i1 - 1;
+  const auto& p0 = plan[i0].pose.position;
+  const auto& p1 = plan[i1].pose.position;
+  const double dx = p1.x - p0.x, dy = p1.y - p0.y;
+  if (std::hypot(dx, dy) < 1e-6) return false;
+  yaw_path = std::atan2(dy, dx);
+  return true;
+}
+
+namespace pplp = pure_pursuit_local_planner;
+
+pplp::PurePursuitPlanner::PurePursuitPlanner()
+: initialized_(false),
+  goal_reached_(false),
+  costmap_ros_(nullptr),
+  tf2_buffer_(nullptr),
+  lookahead_index_(12),
+  max_linear_x_(0.35),
+  max_angular_z_(1.2),
+  goal_tolerance_xy_(0.15),
+  tip_angle_rad_(0.7),
+  tip_release_angle_(0.25),
+  tip_near_dist_(1.0),
+  tip_ang_kp_(1.6),
+  tip_min_angular_(0.50),
+  tip_mode_(false),
+  no_motion_ticks_(0)
+{}
+
+pplp::PurePursuitPlanner::~PurePursuitPlanner() {}
+
+void pplp::PurePursuitPlanner::initialize(std::string name,
+                                          tf2_ros::Buffer* tf,
+                                          costmap_2d::Costmap2DROS* costmap_ros)
+{
+  if (initialized_) return;
+  tf2_buffer_  = tf;
+  costmap_ros_ = costmap_ros;
+
+  ros::NodeHandle pnh("~/" + name);
+  local_plan_pub_ = pnh.advertise<nav_msgs::Path>("local_plan", 1, true);
+
+  // rosparam
+  pnh.param("lookahead_index",    lookahead_index_,    lookahead_index_);
+  pnh.param("max_linear_x",       max_linear_x_,       max_linear_x_);
+  pnh.param("max_angular_z",      max_angular_z_,      max_angular_z_);
+  pnh.param("goal_tolerance_xy",  goal_tolerance_xy_,  goal_tolerance_xy_);
+  pnh.param("tip_angle_rad",      tip_angle_rad_,      tip_angle_rad_);
+  pnh.param("tip_release_angle",  tip_release_angle_,  tip_release_angle_);
+  pnh.param("tip_near_dist",      tip_near_dist_,      tip_near_dist_);
+  pnh.param("tip_ang_kp",         tip_ang_kp_,         tip_ang_kp_);
+  pnh.param("tip_min_angular",    tip_min_angular_,    tip_min_angular_);
+
+  last_motion_stamp_ = ros::Time::now();
+  last_pose_ = geometry_msgs::Pose();
+
+  initialized_ = true;
+  ROS_INFO("PurePursuitPlanner initialized (tf2).");
+}
+
+bool pplp::PurePursuitPlanner::setPlan(const std::vector<geometry_msgs::PoseStamped>& plan)
+{
+  if (!initialized_) return false;
+  global_plan_ = plan;
+  if (global_plan_.empty()) {
+    goal_reached_ = false;
+    ROS_WARN("PurePursuitPlanner::setPlan: empty plan");
+    return false;
+  }
+  goal_reached_ = false;
+  ROS_INFO("PurePursuitPlanner: new plan (size=%zu)", global_plan_.size());
+  return true;
+}
+
+bool pplp::PurePursuitPlanner::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
+{
+  cmd_vel = geometry_msgs::Twist();
+  if (!initialized_ || global_plan_.empty()) return false;
+
+  // Robot pose
+  geometry_msgs::PoseStamped robot_pose;
+  if (!costmap_ros_->getRobotPose(robot_pose)) return false;
+
+  const std::string global_frame = costmap_ros_->getGlobalFrameID();
+  const int size_minus1 = static_cast<int>(global_plan_.size() - 1);
+  const int base_idx = std::min(lookahead_index_, size_minus1);
+
+  // (1) curvature estimate at base_idx
+  geometry_msgs::PoseStamped tmp_target;
+  if (!pplp::getXPoseTF2(*tf2_buffer_, global_plan_, global_frame, tmp_target, base_idx)) return false;
+
+  const double yaw_robot = tf2::getYaw(robot_pose.pose.orientation);
+  double dx_tmp  = tmp_target.pose.position.x - robot_pose.pose.position.x;
+  double dy_tmp  = tmp_target.pose.position.y - robot_pose.pose.position.y;
+  double lx_tmp  =  dx_tmp * std::cos(-yaw_robot) - dy_tmp * std::sin(-yaw_robot);
+  double ly_tmp  =  dx_tmp * std::sin(-yaw_robot) + dy_tmp * std::cos(-yaw_robot);
+  double d2_tmp  = std::max(1e-6, lx_tmp*lx_tmp + ly_tmp*ly_tmp);
+  double kappa   = std::fabs( 2.0 * ly_tmp / d2_tmp );
+
+  // (2) shrink index if sharp
+  int adj_idx = base_idx;
+  if (kappa > 0.3) adj_idx = std::max(5, base_idx - 3);
+  if (kappa > 0.6) adj_idx = std::max(3, base_idx - 5);
+
+  // (3) LoS carrot selection
+  auto* cm = costmap_ros_->getCostmap();
+  int chosen_idx = adj_idx;
+  for (int i = adj_idx; i >= 1; --i) {
+    const auto& p = global_plan_[i].pose.position;
+    if (!collisionAlongLine(cm, robot_pose.pose.position.x, robot_pose.pose.position.y, p.x, p.y)) {
+      chosen_idx = i; break;
+    }
+  }
+  const int target_idx = std::max(1, std::min(chosen_idx, size_minus1));
+
+  // (4) target pose
+  geometry_msgs::PoseStamped target_global;
+  if (!pplp::getXPoseTF2(*tf2_buffer_, global_plan_, global_frame, target_global, target_idx)) return false;
+
+  // Local target
+  std::vector<double> local_xy(2,0.0);
+  double dx = target_global.pose.position.x - robot_pose.pose.position.x;
+  double dy = target_global.pose.position.y - robot_pose.pose.position.y;
+  local_xy[0] = dx * std::cos(-yaw_robot) - dy * std::sin(-yaw_robot);
+  local_xy[1] = dx * std::sin(-yaw_robot) + dy * std::cos(-yaw_robot);
+
+  // === TIP decision (strong triggers) ===
+  const double lx = local_xy[0];
+  const double ly = local_xy[1];
+  const double dist = std::hypot(lx, ly);
+  double ang_err_point = std::atan2(ly, lx);
+
+  double yaw_path_glob = 0.0, ang_err_tangent = 0.0;
+  if (pathHeadingAt(global_plan_, target_idx, yaw_path_glob)) {
+    ang_err_tangent = angles::shortest_angular_distance(yaw_robot, yaw_path_glob);
+  }
+  double ang_err = (std::fabs(ang_err_tangent) > std::fabs(ang_err_point)) ? ang_err_tangent : ang_err_point;
+
+  const bool lateral_close = (std::fabs(ly) > 0.15 && std::fabs(lx) < 0.35);
+  const bool strong_curve  = (kappa > 0.6);
+  const double dmin_front  = forwardObstacleDistance(costmap_ros_, 0.50, 0.30);
+
+  const bool tip_enter = (std::fabs(ang_err) > tip_angle_rad_) || lateral_close || strong_curve || (dmin_front < 0.45);
+  const bool tip_exit  = (std::fabs(ang_err) < tip_release_angle_) && (dist >= 0.25);
+
+  if (!tip_mode_ && tip_enter) tip_mode_ = true;
+  if (tip_mode_ && tip_exit)   tip_mode_ = false;
+
+  ROS_INFO_THROTTLE(0.5,
+    "TIP %s | ang_p=%.2f, ang_t=%.2f -> pick=%.2f | lat=%.2f, fwd=%.2f, kappa=%.2f",
+    (tip_mode_ ? "ON":"off"), ang_err_point, ang_err_tangent, ang_err, ly, lx, kappa);
+
+  if (tip_mode_) {
+    const double dmin_tip = forwardObstacleDistance(costmap_ros_, 0.25, 0.30);
+    if (dmin_tip < 0.18) {
+      cmd_vel = geometry_msgs::Twist(); // 공간 없음 → recovery
+      ROS_WARN_THROTTLE(1.0, "TIP blocked: d=%.2f", dmin_tip);
+      return false;
+    }
+    // 선속=0, 각속만 (P + 최소각속 보장)
+    const double w_mag = std::max(tip_min_angular_,
+                          std::min(max_angular_z_, tip_ang_kp_ * std::fabs(ang_err)));
+    cmd_vel.linear.x  = 0.0;
+    cmd_vel.angular.z = (ang_err >= 0.0 ? +w_mag : -w_mag);
+    return true; // 아래 제어 덮어쓰기 방지
+  }
+
+  // === proximity gate (hard stop) ===
+  const double dmin = forwardObstacleDistance(costmap_ros_, 0.60, 0.35);
+  if (dmin < 0.35) { cmd_vel = geometry_msgs::Twist(); return false; }
+
+  // === speed scaling (aggressive suppression) ===
+  // 곡률/환경 스케일(기존) 기반
+  double v_scale_curv = 1.0 / (1.0 + 1.5 * std::fabs( 2.0*local_xy[1] / std::max(1e-6, local_xy[0]*local_xy[0] + local_xy[1]*local_xy[1]) ));
+  if (v_scale_curv < 0.2) v_scale_curv = 0.2;
+
+  double v_scale_env = 1.0;
+  if (std::isfinite(dmin) && dmin < 0.70) {
+    v_scale_env = std::max(0.05, (dmin - 0.35) / (0.70 - 0.35)); // 0.05~1.0
+  }
+
+  // 추가 억제: 헤딩/옆치기
+  double v_scale_heading = std::exp(-3.0 * std::fabs(ang_err));                 // 오차 클수록 0
+  double v_scale_lateral = std::exp(-8.0 * std::min(0.25, std::fabs(ly)));      // 옆치기 클수록 0
+
+  double v_scale = std::min({v_scale_curv, v_scale_env, v_scale_heading, v_scale_lateral});
+  double max_lin_for_step = max_linear_x_ * v_scale;
+
+  // 하드 클램프: 큰 회전 요구 or 옆치기 → 사실상 선속 0
+  if (std::fabs(ang_err) > 0.55 || std::fabs(ly) > 0.20) {
+    max_lin_for_step = std::min(max_lin_for_step, 0.02);
+  }
+
+  // 각속 상한 여유(급커브 시 약간 상향)
+  double max_ang_for_step = (kappa > 0.5) ? std::min(max_angular_z_ * 1.2, max_angular_z_ + 0.3)
+                                          : max_angular_z_;
+
+  // === control (heading-error P control) ===
+  setControls(local_xy, cmd_vel, max_lin_for_step, max_ang_for_step);
+
+  // goal check
+  const geometry_msgs::PoseStamped& plan_goal = global_plan_.back();
+  const double dist_to_goal = getEuclideanDistance(robot_pose.pose.position.x, robot_pose.pose.position.y,
+                                                   plan_goal.pose.position.x,  plan_goal.pose.position.y);
+  if (dist_to_goal < std::max(0.05, goal_tolerance_xy_)) {
+    goal_reached_ = true;
+    cmd_vel = geometry_msgs::Twist();
+    ROS_INFO_THROTTLE(1.0, "PurePursuitPlanner: goal reached (%.3fm)", dist_to_goal);
+  } else {
+    goal_reached_ = false;
+  }
+
+  // publish local debug point
+  std::vector<geometry_msgs::PoseStamped> local_path(1);
+  local_path[0].header.frame_id = costmap_ros_->getBaseFrameID();
+  local_path[0].header.stamp    = ros::Time::now();
+  local_path[0].pose.position.x = local_xy[0];
+  local_path[0].pose.position.y = local_xy[1];
+  local_path[0].pose.orientation.w = 1.0;
+  publishLocalPlan(local_path);
+
+  // stuck watchdog
+  static const double MOVE_EPS = 0.02;
+  double moved = std::hypot(robot_pose.pose.position.x - last_pose_.position.x,
+                            robot_pose.pose.position.y - last_pose_.position.y);
+  const bool commanding = (std::fabs(cmd_vel.linear.x) > 0.05 || std::fabs(cmd_vel.angular.z) > 0.2);
+  if (commanding && moved < MOVE_EPS) no_motion_ticks_++;
+  else { no_motion_ticks_ = 0; last_motion_stamp_ = ros::Time::now(); last_pose_ = robot_pose.pose; }
+
+  if (no_motion_ticks_ >= 8) { cmd_vel = geometry_msgs::Twist(); no_motion_ticks_ = 0; return false; }
+
+  return true;
+}
+
+bool pplp::PurePursuitPlanner::isGoalReached()
+{
+  return goal_reached_;
+}
+
+void pplp::PurePursuitPlanner::publishLocalPlan(const std::vector<geometry_msgs::PoseStamped>& path) const
+{
+  nav_msgs::Path p;
+  p.header.frame_id = costmap_ros_->getBaseFrameID();
+  p.header.stamp    = ros::Time::now();
+  p.poses = path;
+  local_plan_pub_.publish(p);
+}
+
+bool pplp::PurePursuitPlanner::getGoalLocalCoordinates(std::vector<double>& local_xy,
+                                                       const geometry_msgs::PoseStamped& /*robot_pose*/,
+                                                       double /*lookahead*/) const
+{
+  local_xy.clear(); local_xy.push_back(0.0); local_xy.push_back(0.0); return true;
+}
+
+// === HEADING-ERROR P CONTROL (회전 우선) ===
+void pplp::PurePursuitPlanner::setControls(const std::vector<double>& lookahead_xy,
+                                           geometry_msgs::Twist& cmd_vel,
+                                           double max_lin, double max_ang) const
+{
+  const double x  = lookahead_xy[0];
+  const double y  = lookahead_xy[1];
+
+  const double ang_err = std::atan2(y, x); // 로컬 프레임
+  const double k_w = tip_ang_kp_;          // 각속 게인(동일 게인 재사용)
+
+  double w = k_w * ang_err;
+  if (w >  max_ang) w =  max_ang;
+  if (w < -max_ang) w = -max_ang;
+
+  double v = std::max(0.0, std::min(x, max_lin)); // 뒤로는 밀지 않음
+
+  cmd_vel.linear.x  = v;
+  cmd_vel.angular.z = w;
+}
+
+double pplp::PurePursuitPlanner::getEuclideanDistance(double x1, double y1, double x2, double y2) const
+{
+  const double dx = x1 - x2, dy = y1 - y2;
+  return std::sqrt(dx*dx + dy*dy);
+}

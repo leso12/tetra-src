@@ -1,0 +1,31 @@
+#include <pure_pursuit_local_planner/transform_global_plan.h>
+#include <ros/ros.h>
+
+namespace pure_pursuit_local_planner
+{
+bool getXPoseTF2(tf2_ros::Buffer& tf2_buffer,
+                 const std::vector<geometry_msgs::PoseStamped>& global_plan,
+                 const std::string& global_frame,
+                 geometry_msgs::PoseStamped& out_pose,
+                 int plan_point)
+{
+  if (global_plan.empty()) {
+    ROS_ERROR("getXPoseTF2: empty global plan");
+    return false;
+  }
+  if (plan_point < 0) plan_point = 0;
+  if (plan_point >= static_cast<int>(global_plan.size())) {
+    ROS_ERROR("getXPoseTF2: index %d out of range (size=%zu)", plan_point, global_plan.size());
+    return false;
+  }
+
+  const auto& src = global_plan[plan_point];
+  try {
+    out_pose = tf2_buffer.transform(src, global_frame, ros::Duration(0.2));
+    return true;
+  } catch (const tf2::TransformException& ex) {
+    ROS_WARN("getXPoseTF2: TF2 transform failed: %s", ex.what());
+    return false;
+  }
+}
+} // namespace pure_pursuit_local_planner
