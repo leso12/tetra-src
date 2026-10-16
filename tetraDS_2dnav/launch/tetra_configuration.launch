@@ -123,6 +123,9 @@
     <param name="duration" value="10000"/>
   </node>
 
+  <!-- Validated navigation tuning: only stages YAML; never restarts a running robot. -->
+  <node pkg="tetraDS_2dnav" type="navigation_tuning_server.py" name="navigation_tuning_server" output="screen" />
+
   <!-- ROS to web republisher -->
   <node pkg="tf2_web_republisher" type="tf2_web_republisher" name="tf2_web_republisher" output="screen" />
   <include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch" ></include> <!-- 멀티관제시 주석 -->

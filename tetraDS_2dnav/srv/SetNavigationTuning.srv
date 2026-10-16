@@ -1,0 +1,5 @@
+string settings_json
+---
+bool success
+string message
+string settings_json
