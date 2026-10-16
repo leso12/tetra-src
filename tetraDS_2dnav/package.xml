@@ -22,6 +22,7 @@
   <depend>geometry_msgs</depend>
   <build_depend>message_generation</build_depend>
   <exec_depend>message_runtime</exec_depend>
+  <exec_depend>rospy</exec_depend>
 
   <!-- other dependencies -->
   <exec_depend>jsk_pcl_ros</exec_depend>

@@ -32,6 +32,8 @@
     <rosparam file="$(find tetraDS_2dnav)/config/teb_local_planner_params.yaml" command="load" />	
     <rosparam file="$(find tetraDS_2dnav)/config/move_base_params.yaml" command="load" />	
 
+    <!-- Operator overrides are loaded only at navigation startup (no live reload). -->
+    <rosparam file="$(find tetraDS_2dnav)/config/nav_operator_overrides.yaml" command="load" />
     <param name="base_local_planner" value="teb_local_planner/TebLocalPlannerROS" />
     <!-- Apply the filtered odometry topic after loading the TEB YAML. -->
     <param name="TebLocalPlannerROS/odom_topic" value="$(arg odom_topic)" />

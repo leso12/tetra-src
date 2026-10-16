@@ -5,7 +5,7 @@ on:
       - 'tetraDS_2dnav/launch/**'
       - 'tetraDS_2dnav/config/**'
       - 'tetraDS_2dnav/odom_nav_config/**'
-      - 'tests/test_navigation_config.py'
+      - 'tests/test_navigation*.py'
       - '.github/workflows/navigation-config-checks.yml'
   push:
     branches: [main]
@@ -13,7 +13,7 @@ on:
       - 'tetraDS_2dnav/launch/**'
       - 'tetraDS_2dnav/config/**'
       - 'tetraDS_2dnav/odom_nav_config/**'
-      - 'tests/test_navigation_config.py'
+      - 'tests/test_navigation*.py'
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -23,4 +23,4 @@ jobs:
         with:
           python-version: '3.11'
       - run: python -m pip install 'PyYAML>=6,<7'
-      - run: python -m unittest discover -s tests -p 'test_navigation_config.py' -v
+      - run: python -m unittest discover -s tests -p 'test_navigation*.py' -v
