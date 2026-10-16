@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>TETRA | Navigation Tuning</title>
+  <link rel="stylesheet" href="navigation_settings.css">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div><p class="eyebrow">TETRA ROBOT / ROS1</p><h1>자율주행 설정</h1><p class="sub">장애물 인식·회피 설정을 현장에서 확인하고 안전하게 저장합니다.</p></div>
+      <a class="quiet-link" href="index.html">기존 제어 화면 ↗</a>
+    </header>
+
+    <section class="panel connection" aria-label="ROS 연결">
+      <div class="panel-heading"><div><h2>로봇 연결</h2><p>ROSBridge WebSocket · 읽기 실패 시 저장 불가</p></div><span id="connectionBadge" class="badge neutral" role="status">연결 안 됨</span></div>
+      <div class="connection-fields">
+        <label>WebSocket 주소<input id="wsUrl" type="text" spellcheck="false" autocomplete="off" placeholder="ws://192.168.33.2:9090"></label>
+        <label>ROS 네임스페이스<input id="namespace" type="text" spellcheck="false" autocomplete="off" value="TETRA_NS"></label>
+        <button id="connectButton" type="button">연결 / 다시 연결</button>
+      </div>
+      <p class="hint">로봇이 있는 사설망에서만 사용하세요. 이 화면은 ROSBridge의 인증 기능을 대신하지 않습니다.</p>
+    </section>
+
+    <div class="status-grid">
+      <section class="panel small"><p class="meta">설정 적용 상태</p><strong id="applyState">—</strong><small id="applyDetail">로봇에 연결해 주세요.</small></section>
+      <section class="panel small"><p class="meta">LiDAR /scan</p><strong id="laserState">—</strong><small id="laserDetail">수신 대기</small></section>
+      <section class="panel small"><p class="meta">위치추정 /odometry/filtered</p><strong id="odomState">—</strong><small id="odomDetail">수신 대기</small></section>
+    </div>
+
+    <div id="message" class="notice" role="status" aria-live="polite">설정을 변경하려면 ROSBridge에 연결하세요.</div>
+
+    <form id="tuningForm" class="sections">
+      <section class="panel">
+        <div class="panel-heading"><div><h2>센서 장애물 처리</h2><p>센서 물리적 감지 거리와 Costmap 관측 범위는 다릅니다.</p></div><span class="tag">Costmap</span></div>
+        <div class="setting-list">
+          <label class="setting"><span><b>2D LiDAR 장애물 반영 거리</b><small>레이저 측정점을 장애물로 표시하는 최대 범위</small><em data-active="lidar_mark">현재 적용: —</em></span><span class="unit"><input data-setting="lidar_mark" type="number" step="0.1" min="0.5" max="25" required disabled> m</span></label>
+          <label class="setting"><span><b>2D LiDAR 빈 공간 갱신 거리</b><small>사라진 장애물을 지우는 Raytrace 범위 (반영 거리 이상)</small><em data-active="lidar_clear">현재 적용: —</em></span><span class="unit"><input data-setting="lidar_clear" type="number" step="0.1" min="0.5" max="25" required disabled> m</span></label>
+          <label class="setting"><span><b>Depth Camera 장애물 범위</b><small>STVL 깊이 포인트클라우드 관측 범위</small><em data-active="depth_range">현재 적용: —</em></span><span class="unit"><input data-setting="depth_range" type="number" step="0.1" min="0.3" max="3" required disabled> m</span></label>
+          <label class="setting"><span><b>Cygbot 장애물 범위</b><small>보조 센서 STVL 관측 범위</small><em data-active="cygbot_range">현재 적용: —</em></span><span class="unit"><input data-setting="cygbot_range" type="number" step="0.1" min="0.3" max="4" required disabled> m</span></label>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading"><div><h2>장애물 회피 여유</h2><p>맵 장애물 비용과 TEB 경로 최적화의 이격 조건</p></div><span class="tag">Planning</span></div>
+        <div class="setting-list">
+          <label class="setting"><span><b>Local Costmap Inflation</b><small>로봇 주변 장애물 비용 확장 범위</small><em data-active="local_inflation">현재 적용: —</em></span><span class="unit"><input data-setting="local_inflation" type="number" step="0.05" min="0.25" max="1.5" required disabled> m</span></label>
+          <label class="setting"><span><b>Global Costmap Inflation</b><small>전체 경로 탐색 시 적용하는 비용 확장 범위</small><em data-active="global_inflation">현재 적용: —</em></span><span class="unit"><input data-setting="global_inflation" type="number" step="0.05" min="0.25" max="1.5" required disabled> m</span></label>
+          <label class="setting"><span><b>TEB 최소 장애물 이격</b><small>경로 최적화의 최소 장애물 이격거리 (물리적 정지거리 아님)</small><em data-active="teb_min_obstacle">현재 적용: —</em></span><span class="unit"><input data-setting="teb_min_obstacle" type="number" step="0.05" min="0.25" max="1.2" required disabled> m</span></label>
+          <label class="setting"><span><b>TEB Inflation 거리</b><small>TEB 장애물 비용 영역 (최소 장애물 이격 이상)</small><em data-active="teb_inflation">현재 적용: —</em></span><span class="unit"><input data-setting="teb_inflation" type="number" step="0.05" min="0.25" max="1.5" required disabled> m</span></label>
+        </div>
+      </section>
+
+      <section class="panel action-panel">
+        <div><h2>설정 저장</h2><p>저장한 값은 설정 파일에 대기합니다. <strong>실제 적용은 정지 상태에서 내비게이션 재시작 후</strong> 이루어집니다. 운행 중 실시간 적용하거나 자동 재시작하지 않습니다.</p></div>
+        <div class="buttons">
+          <button id="reloadButton" type="button" class="secondary" disabled>설정 다시 읽기</button>
+          <button id="saveButton" type="submit" disabled>변경사항 저장</button>
+        </div>
+      </section>
+    </form>
+    <footer>설정 저장 ≠ 즉시 적용 · 긴급정지 기능 아님 · 실장비 적용 전에 시뮬레이션에서 경로와 정지거리를 확인하세요.</footer>
+  </div>
+  <script src="./roslibjs-1.4.1/build/roslib.min.js"></script>
+  <script src="navigation_settings.js"></script>
+</body>
+</html>
