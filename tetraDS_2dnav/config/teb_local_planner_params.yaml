@@ -34,7 +34,7 @@ TebLocalPlannerROS:
  cmd_angle_instead_rotvel: false
 
  footprint_model:
-   types: "line"
+   type: "line"
    line_start: [0.0, 0.0]
    line_end: [-0.356, 0.0]
 
