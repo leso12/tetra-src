@@ -31,7 +31,7 @@ TebLocalPlannerROS:
  wheelbase: 0.0
  cmd_angle_instead_rotvel: false
  footprint_model:
-   types: "polygon"
+   type: "polygon"
    vertices: [[0.212,0.245], [-0.3904,0.245], [-0.3904,-0.245], [0.212,-0.245]]
     
  # GoalTolerance

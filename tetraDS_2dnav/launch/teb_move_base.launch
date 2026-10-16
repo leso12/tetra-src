@@ -6,7 +6,7 @@
   <arg name="base_frame_id" default="$(arg namespace)/base_footprint" />
   <arg name="global_frame_id" default="map" />
   <arg name="cmd_vel_topic" default="$(arg namespace)/cmd_vel" />
-  <arg name="odom_topic" default="$(arg namespace)/odometry/filtered" /> <!-- odom -->
+  <arg name="odom_topic" default="/$(arg namespace)/odometry/filtered" /> <!-- EKF filtered odometry -->
   <arg name="move_forward_only" default="false"/>
 
   <node pkg="move_base" type="move_base" name="move_base" output="screen" clear_params="true" respawn="true">
@@ -33,6 +33,8 @@
     <rosparam file="$(find tetraDS_2dnav)/config/move_base_params.yaml" command="load" />	
 
     <param name="base_local_planner" value="teb_local_planner/TebLocalPlannerROS" />
+    <!-- Apply the filtered odometry topic after loading the TEB YAML. -->
+    <param name="TebLocalPlannerROS/odom_topic" value="$(arg odom_topic)" />
 
     <!-- add-->
     <param name="global_costmap/global_frame" value="$(arg global_frame_id)"/>
